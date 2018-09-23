@@ -59,7 +59,7 @@ var TestResult = mongoose.model('TestResult', {
     },
     RunTime: {
         type: 'Number',
-        required: true,
+        required: false,
     },
     FullName: {
         type: 'String',

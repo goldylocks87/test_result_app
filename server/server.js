@@ -33,7 +33,7 @@ app.post('/testresults', (req, res) => {
 
     const testResults = req.body.map(item => new TestResult(item));
     TestResult.insertMany(testResults, (err) => {
-        if (err) res.status(404).send({error: 'This is not a valid array.'}); 
+        if (err) res.status(404).send(err); 
         else res.send(testResults);
     });
 });
