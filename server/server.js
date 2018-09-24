@@ -8,6 +8,7 @@ const { ObjectId } = require('mongodb');
 const { mongoose } = require('./db/mongoose');
 
 const { TestResult } = require('./models/testResult');
+const { User } = require('./models/user');
 
 const app = express();
 const port = process.env.PORT; 
@@ -18,8 +19,7 @@ app.post('/testresult', (req, res) => {
 
     var testResult = new TestResult(req.body);
 
-    testResult.save()
-    .then((doc) => {
+    testResult.save().then((doc) => {
         res.send(doc);
     }, (err) => {
         res.status(400).send(err); 
@@ -82,6 +82,42 @@ app.delete('/testresults/:id', (req, res) => {
     }).catch((err) => {
         res.status(400).send({error: 'Bad shit happened...'})
     }); 
+});
+
+app.patch('/testresults/:id', (req, res) => {
+
+    let id = req.params.id;
+
+    if( !ObjectId.isValid(id) ){
+        return res.status(404).send({error: 'Could not find that ish...'}); 
+    }
+
+    TestResult.findByIdAndUpdate(id, {$set: req.body}, {new: true})
+    .then((testresult) => {
+        if(!testresult) res.status(404).send({error: 'Could not find that ish...'}); 
+        else res.send({testresult});
+
+    }, (err) => {
+        res.status(400).send({error: 'Bad shit happened...'})
+    }).catch(err => console.error(err)); 
+});
+
+app.post('/users', (req, res) => {
+
+    // pick off props that we want users to be able to set
+    let body = _.pick(req.body, ['email','password']);
+
+    var user = new User(body);
+
+    user.save()
+    .then(() => {
+        return user.generateAuthToken();
+    })
+    .then((token) => {
+        // x- denotes a custom header prop
+        res.header('x-auth', token).send(user);
+    })
+    .catch( err => res.status(400).send(err) );
 });
 
 module.exports = { app };
