@@ -42,10 +42,14 @@ UserSchema.methods.toJSON = function () {
 
 // arrow functions do not bind a this prop so using reg function
 UserSchema.methods.generateAuthToken = function () {
-    console.log('~~~ this', this);
     let user = this;
     let access = 'auth';
-    let token = jwt.sign({ _id: user._id.toHexString(), access: access }, 'bssecret').toString();
+    let token = jwt.sign(
+        { 
+            _id: user._id.toHexString(), 
+            access: access 
+        }, 
+        'bssecret').toString();
 
     // adds the token to the tokens array on the user
     user.tokens = user.tokens.concat([{access, token}]);
