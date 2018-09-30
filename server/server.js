@@ -30,11 +30,11 @@ app.post('/testresult', (req, res) => {
 app.post('/testresults', (req, res) => {
 
     if ( !Array.isArray(req.body) )
-        return res.status(404).send({error: 'This is not a valid array.'}); 
+        return res.status(400).send({error: 'This is not a valid array.'}); 
 
     const testResults = req.body.map(item => new TestResult(item));
     TestResult.insertMany(testResults, (err) => {
-        if (err) res.status(404).send(err); 
+        if (err) res.status(400).send(err); 
         else res.send(testResults);
     });
 });
@@ -58,9 +58,9 @@ app.get('/testresults/:id', (req, res) => {
     }
 
     TestResult.findById(id)
-    .then((testresult) => {
-        if(!testresult) res.status(404).send({error: 'Could not find that ish...'}); 
-        else res.send({testresult});
+    .then((testresults) => {
+        if(!testresults) res.status(404).send({error: 'Could not find that ish...'}); 
+        else res.send({testresults});
 
     }).catch((err) => {
         res.status(400).send({error: 'Bad shit happened...'})
@@ -76,9 +76,9 @@ app.delete('/testresults/:id', (req, res) => {
     }
 
     TestResult.findByIdAndRemove(id)
-    .then((testresult) => {
-        if(!testresult) res.status(404).send({error: 'Could not find that ish...'}); 
-        else res.send({testresult});
+    .then((testresults) => {
+        if(!testresults) res.status(404).send({error: 'Could not find that ish...'}); 
+        else res.send({testresults});
         
     }).catch((err) => {
         res.status(400).send({error: 'Bad shit happened...'})
@@ -94,9 +94,9 @@ app.patch('/testresults/:id', (req, res) => {
     }
 
     TestResult.findByIdAndUpdate(id, {$set: req.body}, {new: true})
-    .then((testresult) => {
-        if(!testresult) res.status(404).send({error: 'Could not find that ish...'}); 
-        else res.send({testresult});
+    .then((testresults) => {
+        if(!testresults) res.status(404).send({error: 'Could not find that ish...'}); 
+        else res.send({testresults});
 
     }, (err) => {
         res.status(400).send({error: 'Bad shit happened...'})

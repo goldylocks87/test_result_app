@@ -1,77 +1,140 @@
 const expect = require('expect');
 const request = require('supertest');
-const {ObjectId} = require('mongodb');
+const { ObjectId } = require('mongodb');
 
 const { app } = require('./../server');
-const { Todo } = require('./../models/todo');
+const { TestResult } = require('./../models/testResult');
 
-const todos = [
+const testResults = [
     {
         _id: new ObjectId(),
-        text: 'some todo'
+        attributes: {
+            type: 'ApexTestResult',
+            url: '/someUrl/123'
+        },
+        Id: '123',
+        QueueItemId: '456',
+        StackTrace: null,
+        Message: null,
+        AsyncApexJobId: '789',
+        MethodName: 'test',
+        Outcome: 'Pass',
+        ApexClass: {
+            attributes: {
+                type: 'ApexClass',
+                url: '/someUrl'
+            },
+            Id: '012',
+            Name: 'Some_Test',
+            NamespacePrefix: null
+        },
+        RunTime: 100,
+        FullName: 'Some_Test.test'
     }, {
         _id: new ObjectId(),
-        text: 'some other'
+        attributes: {
+            type: 'ApexTestResult',
+            url: '/someUrl/1234'
+        },
+        Id: '1234',
+        QueueItemId: '4567',
+        StackTrace: null,
+        Message: null,
+        AsyncApexJobId: '7890',
+        MethodName: 'test',
+        Outcome: 'Fail',
+        ApexClass: {
+            attributes: {
+                type: 'ApexClass',
+                url: '/someUrl'
+            },
+            Id: '0123',
+            Name: 'Some_Test_2',
+            NamespacePrefix: null
+        },
+        RunTime: 100,
+        FullName: 'Some_Test_2.test2'
     }
 ];
 
 // clear the db before each test
 beforeEach((done) => {
-    Todo.remove({}).then(() => {
-        return Todo.insertMany(todos);
+    TestResult.remove({}).then(() => {
+        return TestResult.insertMany(testResults);
     }).then(() => done());
 });
 
-describe('POST /todos', () => {
-    it('should create a new todo', (done) => {
-        let text = 'some test text';
+describe('POST /testresults', () => {
+    it('should create a new testresult', (done) => {
+
+        let newTestResult = 
+            [{
+
+                "attributes": {
+                    "type": "ApexTestResult",
+                    "url": "/someUrl/12345"
+                },
+                "Id": "12345",
+                "QueueItemId": "45678",
+                "StackTrace": null,
+                "Message": null,
+                "AsyncApexJobId": "78901",
+                "MethodName": "test",
+                "Outcome": "Fail",
+                "ApexClass": {
+                    "attributes": {
+                        "type": "ApexClass",
+                        "url": "/someUrl"
+                    },
+                    "Id": "01234",
+                    "Name": "Some_Test_3",
+                    "NamespacePrefix": null
+                },
+                "RunTime": 100,
+                "FullName": "Some_Test_3.test3"
+            }];
 
         request(app)
-            .post('/todos')
-            .send({text})
+            .post('/testresults')
+            .send(newTestResult)
             .expect(200)
             .expect((res) => {
-                expect(res.body.text).toBe(text);
+                expect(res.body.length).toBe(1);
             })
             .end((err, res) => {
-                if(err) {
-                    return done(err);
-                }
+                if(err) return done(err);
 
-                Todo.find({text: 'some test text'}).then((todos) => {
-                    expect(todos.length).toBe(1);
-                    expect(todos[0].text).toBe(text);
-                    done();
+                // make sure we can find it in the db
+                TestResult.find({AsyncApexJobId: '78901'})
+                .then((testresults) => {
+                    expect(testresults.AsyncApexJobId)
+                    .toBe(newTestResult.AsyncApexJobId);
+                    
+                    done(testresults.AsyncApexJobId);
                 }).catch((err) => done(err));
             });
     });
 
-    it('should not create a todo with a BS body', (done) => {
+    it('should not create a testresult with a bad body', (done) => {
 
         request(app)
-            .post('/todos')
+            .post('/testresults')
             .send({})
             .expect(400)
             .end((err, res) => {
-                if(err) {
-                    return done(err);
-                }
-
-                Todo.find().then((todos) => {
-                    expect(todos.length).toBe(2);
-                    done();
-                }).catch(err => done(err));
+                if(err) return done(err);
+                else done();
             });
     });
 });
 
-describe('GET /todos', () => {
-    it('should get all todos', (done) => {
+describe('GET /testresults', () => {
+    it('should get all testresults', (done) => {
         request(app)
-            .get('/todos')
+            .get('/testresults')
             .expect(200)
             .expect((res) => {
-                expect(res.body.todos.length).toBe(2);
+                expect(res.body.testresults.length).toBe(2);
                 done();
             })
             .end((err, res) => {
@@ -81,13 +144,14 @@ describe('GET /todos', () => {
     })
 });
 
-describe('GET /todos/:id', () => {
-    it('should return todo by id', (done) => {
+describe('GET /testresults/:id', () => {
+    it('should return testresult by id', (done) => {
         request(app)
-            .get(`/todos/${todos[0]._id.toHexString()}`)
+            .get(`/testresults/${testResults[0]._id.toHexString()}`)
             .expect(200)
             .expect((res) => {
-                expect(res.body.todo.text).toBe(todos[0].text);
+                expect(res.body.testresults.AsyncApexJobId)
+                    .toBe(testResults[0].AsyncApexJobId);
                 done();
             })
             .end((err, res) => {
@@ -96,11 +160,11 @@ describe('GET /todos/:id', () => {
             });
     })
 
-    it('should return an error 404 if todo not found', (done) => {
+    it('should return an error 404 if testresult not found', (done) => {
         let hexId = new ObjectId().toHexString();
 
         request(app)
-            .get(`/todos/${hexId}`)
+            .get(`/testresults/${hexId}`)
             .expect(404)
             .expect((res) => {
                 expect(res.body.error.length).toBeGreaterThan(0);
@@ -114,7 +178,7 @@ describe('GET /todos/:id', () => {
 
     it('should return an error 404 if id is not valid', (done) => {
         request(app)
-            .get('/todos/123')
+            .get('/testresults/123')
             .expect(404)
             .end(done);
     });
