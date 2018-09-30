@@ -112,11 +112,9 @@ app.post('/users', (req, res) => {
 
     user.save()
     .then(() => {
-        console.log('generating auth token..');
         return user.generateAuthToken();
     })
     .then((token) => {
-        console.log('setting header..');
         // x- denotes a custom header prop
         res.header('x-auth', token).send(user);
     })

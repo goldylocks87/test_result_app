@@ -84,17 +84,14 @@ UserSchema.statics.findByToken = function (token) {
 // pre middleware
 UserSchema.pre('save', function (next) {
 
-    console.log('running pre()..');
-
     let user = this;
     if (user.isModified('password')) {
-        console.log('password has changed..');
 
+        // salt the pw
         bcrypt.genSalt(10, (err, salt) => {
-            console.log('salting..');
 
+            // hash && store the pw
             bcrypt.hash(user.password, salt, (err, hash) => {
-                console.log('hashing..');
                 user.password = hash;
                 next();
             });

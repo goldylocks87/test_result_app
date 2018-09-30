@@ -4,65 +4,16 @@ const { ObjectId } = require('mongodb');
 
 const { app } = require('./../server');
 const { TestResult } = require('./../models/testResult');
+const { User } = require('./../models/user');
+const { testResults, 
+        populateTestResults,
+        users,
+        populateUsers } = require('./seed/seed');
 
-const testResults = [
-    {
-        _id: new ObjectId(),
-        attributes: {
-            type: 'ApexTestResult',
-            url: '/someUrl/123'
-        },
-        Id: '123',
-        QueueItemId: '456',
-        StackTrace: null,
-        Message: null,
-        AsyncApexJobId: '789',
-        MethodName: 'test',
-        Outcome: 'Pass',
-        ApexClass: {
-            attributes: {
-                type: 'ApexClass',
-                url: '/someUrl'
-            },
-            Id: '012',
-            Name: 'Some_Test',
-            NamespacePrefix: null
-        },
-        RunTime: 100,
-        FullName: 'Some_Test.test'
-    }, {
-        _id: new ObjectId(),
-        attributes: {
-            type: 'ApexTestResult',
-            url: '/someUrl/1234'
-        },
-        Id: '1234',
-        QueueItemId: '4567',
-        StackTrace: null,
-        Message: null,
-        AsyncApexJobId: '7890',
-        MethodName: 'test',
-        Outcome: 'Fail',
-        ApexClass: {
-            attributes: {
-                type: 'ApexClass',
-                url: '/someUrl'
-            },
-            Id: '0123',
-            Name: 'Some_Test_2',
-            NamespacePrefix: null
-        },
-        RunTime: 100,
-        FullName: 'Some_Test_2.test2'
-    }
-];
 
 // clear the db before each test
-beforeEach((done) => {
-    TestResult.remove({}).then(() => {
-        return TestResult.insertMany(testResults);
-    }).then(() => done());
-});
+beforeEach(populateUsers);
+beforeEach(populateTestResults);
 
 describe('POST /testresults', () => {
     it('should create a new testresult', (done) => {
@@ -110,7 +61,7 @@ describe('POST /testresults', () => {
                     expect(testresults.AsyncApexJobId)
                     .toBe(newTestResult.AsyncApexJobId);
                     
-                    done(testresults.AsyncApexJobId);
+                    done();
                 }).catch((err) => done(err));
             });
     });
@@ -121,10 +72,7 @@ describe('POST /testresults', () => {
             .post('/testresults')
             .send({})
             .expect(400)
-            .end((err, res) => {
-                if(err) return done(err);
-                else done();
-            });
+            .end(done);
     });
 });
 
@@ -134,13 +82,10 @@ describe('GET /testresults', () => {
             .get('/testresults')
             .expect(200)
             .expect((res) => {
-                expect(res.body.testresults.length).toBe(2);
-                done();
+                expect(res.body.testresults.length)
+                .toBe(2);
             })
-            .end((err, res) => {
-                if(err) return done(err);
-
-            });
+            .end(done);
     })
 });
 
@@ -151,13 +96,9 @@ describe('GET /testresults/:id', () => {
             .expect(200)
             .expect((res) => {
                 expect(res.body.testresults.AsyncApexJobId)
-                    .toBe(testResults[0].AsyncApexJobId);
-                done();
+                .toBe(testResults[0].AsyncApexJobId);
             })
-            .end((err, res) => {
-                if(err) return done(err);
-
-            });
+            .end(done);
     })
 
     it('should return an error 404 if testresult not found', (done) => {
@@ -168,12 +109,8 @@ describe('GET /testresults/:id', () => {
             .expect(404)
             .expect((res) => {
                 expect(res.body.error.length).toBeGreaterThan(0);
-                done();
             })
-            .end((err, res) => {
-                if(err) return done(err);
-
-            });
+            .end(done);
     });
 
     it('should return an error 404 if id is not valid', (done) => {
@@ -182,4 +119,83 @@ describe('GET /testresults/:id', () => {
             .expect(404)
             .end(done);
     });
+});
+
+// user tests
+describe('GET /users/me', () => {
+    it('should return user if authenticated', (done) => {
+        request(app)
+            .get('/users/me')
+            .set('x-auth', users[0].tokens[0].token)
+            .expect(200)
+            .expect((res) => {
+                expect(res.body._id).toBe(users[0]._id.toHexString());
+                expect(res.body.email).toBe(users[0].email);
+            })
+            .end(done);
+    })
+
+    it('should return a 401 if not authenticated', (done) => {
+        request(app)
+            .get('/users/me')
+            .set('x-auth', '')
+            .expect(401)
+            .expect((res) => {
+                expect(res.body._id).toBeUndefined;
+            })
+            .end(done);
+    })
+});
+
+describe('POST /users', () => {
+
+    let newUser = 
+        {
+            email: 'new@email.com', 
+            password: 'newPassword123!'
+        };
+
+    it('should create a user', (done) => {
+        request(app)
+            .post('/users')
+            .send(newUser)
+            .expect(200)
+            .expect((res) => {
+                expect(res.body.email).toBe(newUser.email);
+            })
+            .end((err) => {
+                if (err) done(err);
+
+                User.findOne({email: newUser.email})
+                .then((user) => {
+                    expect(user).toExist();
+                    expect(user.password).toNotBe(newUser.password);
+                    done();
+                })
+            });
+    })
+
+    it('should not create a user with an invalid email', (done) => {
+        request(app)
+            .post('/users')
+            .send({email: 'bad', password: newUser.password})
+            .expect(400)
+            .end(done);
+    })
+
+    it('should not create a user with an invalid password', (done) => {
+        request(app)
+            .post('/users')
+            .send({email: newUser.email, password: ''})
+            .expect(400)
+            .end(done);
+    })
+
+    it('should not create a user with a duplicate email', (done) => {
+        request(app)
+            .post('/users')
+            .send(users[0])
+            .expect(400)
+            .end(done);
+    })
 });
