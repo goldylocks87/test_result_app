@@ -62,6 +62,20 @@ UserSchema.methods.generateAuthToken = function () {
     });
 };
 
+// arrow functions do not bind a this prop so using reg function
+UserSchema.methods.removeToken = function (token) {
+    let user = this;
+
+    return user.update({
+        // mongo db $pull to remove a prop
+        $pull: {
+            tokens: {
+                token: token
+            }
+        }
+    })
+};
+
 // model method
 UserSchema.statics.findByToken = function (token) {
     let User = this;
