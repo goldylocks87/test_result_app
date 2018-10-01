@@ -132,7 +132,7 @@ app.post('/users/login', (req, res) => {
     let body = _.pick(req.body, ['email','password']);
 
     User.findByCredentials(body.email, body.password)
-    .then(user => {
+    .then((user) => {
         user.generateAuthToken().then((token) => {
             // x- denotes a custom header prop
             res.header('x-auth', token).send(user);
