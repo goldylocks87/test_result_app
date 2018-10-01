@@ -16,6 +16,7 @@ beforeEach(populateUsers);
 beforeEach(populateTestResults);
 
 describe('POST /testresults', () => {
+    
     it('should create a new testresult', (done) => {
 
         let newTestResult = 
@@ -67,7 +68,6 @@ describe('POST /testresults', () => {
     });
 
     it('should not create a testresult with a bad body', (done) => {
-
         request(app)
             .post('/testresults')
             .send({})
@@ -77,6 +77,7 @@ describe('POST /testresults', () => {
 });
 
 describe('GET /testresults', () => {
+
     it('should get all testresults', (done) => {
         request(app)
             .get('/testresults')
@@ -90,6 +91,7 @@ describe('GET /testresults', () => {
 });
 
 describe('GET /testresults/:id', () => {
+
     it('should return testresult by id', (done) => {
         request(app)
             .get(`/testresults/${testResults[0]._id.toHexString()}`)
@@ -102,6 +104,7 @@ describe('GET /testresults/:id', () => {
     })
 
     it('should return an error 404 if testresult not found', (done) => {
+
         let hexId = new ObjectId().toHexString();
 
         request(app)
@@ -123,6 +126,7 @@ describe('GET /testresults/:id', () => {
 
 // user tests
 describe('GET /users/me', () => {
+
     it('should return user if authenticated', (done) => {
         request(app)
             .get('/users/me')
@@ -201,6 +205,7 @@ describe('POST /users', () => {
 });
 
 describe('POST /users/login', () => {
+
     it('should login user and return auth token', (done) => {
 
         let email = users[1].email;
@@ -243,6 +248,30 @@ describe('POST /users/login', () => {
                 if (err) done(err);
 
                 User.findById(users[1]._id)
+                .then((user) => {
+                    expect(user.tokens.length)
+                    .toBe(0)
+                    done();
+                }).catch(err => done(err));
+            });
+    })
+});
+
+describe('DELETE /users/me/token', () => {
+
+    it('should remove auth token from a users token array', (done) => {
+        request(app)
+            .delete('/users/me/token')
+            .set('x-auth', users[0].tokens[0].token)
+            .expect(200)
+            .expect((res) => {
+                expect(res.headers['x-auth'])
+                .toNotExist();
+            })
+            .end((err, res) => {
+                if (err) done(err);
+
+                User.findById(users[0]._id)
                 .then((user) => {
                     expect(user.tokens.length)
                     .toBe(0)
