@@ -108,7 +108,7 @@ app.post('/users', (req, res) => {
     // pick off props that we want users to be able to set
     let body = _.pick(req.body, ['email','password']);
 
-    var user = new User(body);
+    let user = new User(body);
 
     user.save()
     .then(() => {
@@ -124,6 +124,22 @@ app.post('/users', (req, res) => {
 app.get('/users/me', authenticate, (req, res) => {
 
     res.send(req.user); // from the authenticate middleware
+});
+
+app.post('/users/login', (req, res) => {
+
+    // pick off props that we want users to be able to set
+    let body = _.pick(req.body, ['email','password']);
+
+    User.findByCredentials(body.email, body.password)
+    .then(user => {
+        user.generateAuthToken().then((token) => {
+            // x- denotes a custom header prop
+            res.header('x-auth', token).send(user);
+        })
+    }).catch(err => {
+        res.status(400).send(err);
+    });
 });
 
 module.exports = { app };
