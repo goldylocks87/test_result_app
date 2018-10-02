@@ -48,6 +48,7 @@ describe('POST /testresults', () => {
 
         request(app)
             .post('/testresults')
+            .set('x-auth', users[0].tokens[0].token)
             .send(newTestResult)
             .expect(200)
             .expect((res) => {
@@ -70,6 +71,7 @@ describe('POST /testresults', () => {
     it('should not create a testresult with a bad body', (done) => {
         request(app)
             .post('/testresults')
+            .set('x-auth', users[0].tokens[0].token)
             .send({})
             .expect(400)
             .end(done);
@@ -78,15 +80,27 @@ describe('POST /testresults', () => {
 
 describe('GET /testresults', () => {
 
-    it('should get all testresults', (done) => {
+    it('should get all testresults for this user', (done) => {
         request(app)
             .get('/testresults')
+            .set('x-auth', users[0].tokens[0].token)
             .expect(200)
             .expect((res) => {
                 expect(res.body.testresults.length)
-                .toBe(2);
+                .toBe(1);
             })
-            .end(done);
+            .end((err, res) => {
+                if(err) return done(err);
+
+                // make sure the db has all the test results
+                TestResult.find({})
+                .then((testresults) => {
+                    expect(testresults.length)
+                    .toBe(2);
+                    
+                    done();
+                }).catch((err) => done(err));
+            });
     })
 });
 
@@ -95,11 +109,20 @@ describe('GET /testresults/:id', () => {
     it('should return testresult by id', (done) => {
         request(app)
             .get(`/testresults/${testResults[0]._id.toHexString()}`)
+            .set('x-auth', users[0].tokens[0].token)
             .expect(200)
             .expect((res) => {
                 expect(res.body.testresults.AsyncApexJobId)
                 .toBe(testResults[0].AsyncApexJobId);
             })
+            .end(done);
+    })
+
+    it('should not return a testresult created by a different user', (done) => {
+        request(app)
+            .get(`/testresults/${testResults[1]._id.toHexString()}`)
+            .set('x-auth', users[0].tokens[0].token)
+            .expect(404)
             .end(done);
     })
 
@@ -109,6 +132,7 @@ describe('GET /testresults/:id', () => {
 
         request(app)
             .get(`/testresults/${hexId}`)
+            .set('x-auth', users[0].tokens[0].token)
             .expect(404)
             .expect((res) => {
                 expect(res.body.error.length).toBeGreaterThan(0);
@@ -119,9 +143,106 @@ describe('GET /testresults/:id', () => {
     it('should return an error 404 if id is not valid', (done) => {
         request(app)
             .get('/testresults/123')
+            .set('x-auth', users[0].tokens[0].token)
             .expect(404)
             .end(done);
     });
+});
+
+describe('PATCH /testresults/:id', () => {
+
+    it('should update a test result', (done) => {
+
+        // change a prop 
+        let updatedTestResult = testResults[0];
+        updatedTestResult.MethodName = 'NewMethodName';
+
+        request(app)
+            .patch(`/testresults/${testResults[0]._id.toHexString()}`)
+            .set('x-auth', users[0].tokens[0].token)
+            .send(updatedTestResult)
+            .expect(200)
+            .end((err, res) => {
+                if(err) return done(err);
+
+                // make sure the db has all the test results
+                TestResult.findById(testResults[0]._id)
+                .then((testresults) => {
+                    expect(testresults)
+                    .toExist();
+                    expect(testresults.MethodName)
+                    .toEqual(updatedTestResult.MethodName);
+                    
+                    done();
+                }).catch((err) => done(err));
+            });
+    })
+
+    it('should not update a test result created by another user', (done) => {
+
+        // change a prop 
+        let updatedTestResult = testResults[0];
+        updatedTestResult.MethodName = 'SomeOtherMethodName';
+
+        request(app)
+            .delete(`/testresults/${testResults[0]._id.toHexString()}`)
+            .set('x-auth', users[1].tokens[0].token)
+            .send(updatedTestResult)
+            .expect(404)
+            .end((err, res) => {
+                if(err) return done(err);
+
+                // make sure the db has all the test results
+                TestResult.findById(testResults[0]._id)
+                .then((testresults) => {
+                    expect(testresults.MethodName)
+                    .toNotEqual(updatedTestResult.MethodName);
+                    
+                    done();
+                }).catch((err) => done(err));
+            });
+    })
+});
+
+describe('DELETE /testresults/:id', () => {
+
+    it('should remove a test result', (done) => {
+        request(app)
+            .delete(`/testresults/${testResults[0]._id.toHexString()}`)
+            .set('x-auth', users[0].tokens[0].token)
+            .expect(200)
+            .end((err, res) => {
+                if(err) return done(err);
+
+                // make sure the db has all the test results
+                TestResult.findById(testResults[0]._id)
+                .then((testresults) => {
+                    expect(testresults)
+                    .toNotExist();
+                    
+                    done();
+                }).catch((err) => done(err));
+            });
+    })
+
+    it('should not remove a test result created by another user', (done) => {
+        request(app)
+            .delete(`/testresults/${testResults[1]._id.toHexString()}`)
+            .set('x-auth', users[0].tokens[0].token)
+            .expect(404)
+            .end((err, res) => {
+                if(err) return done(err);
+
+                // make sure the db has all the test results
+                TestResult.findById(testResults[1]._id)
+                .then((testresults) => {
+                    expect(testresults._id)
+                    .toEqual(testResults[1]._id);
+                    
+                    done();
+                }).catch((err) => done(err));
+            });
+    })
 });
 
 // user tests
@@ -224,7 +345,9 @@ describe('POST /users/login', () => {
 
                 User.findById(users[1]._id)
                 .then((user) => {
-                    expect(user.tokens[0].token)
+                    expect(user.tokens.length)
+                    .toBe(2)
+                    expect(user.tokens[1].token)
                     .toBe(res.headers['x-auth']);
                     done();
                 }).catch(err => done(err));
@@ -250,7 +373,7 @@ describe('POST /users/login', () => {
                 User.findById(users[1]._id)
                 .then((user) => {
                     expect(user.tokens.length)
-                    .toBe(0)
+                    .toBe(1)
                     done();
                 }).catch(err => done(err));
             });

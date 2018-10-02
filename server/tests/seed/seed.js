@@ -22,12 +22,17 @@ const users = [
         _id: userTwoId,
         email: 'test2@user2.com',
         password: 'Twopassword123!',
+        tokens: [{
+            access: 'auth',
+            token: jwt.sign({_id: userTwoId, access: 'auth'}, 'bssecret').toString()
+        }]
     }];
 
 // test result records for testing
 const testResults = [
     {
         _id: new ObjectId(),
+        _creator: userOneId,
         attributes: {
             type: 'ApexTestResult',
             url: '/someUrl/123'
@@ -52,6 +57,7 @@ const testResults = [
         FullName: 'Some_Test.test'
     }, {
         _id: new ObjectId(),
+        _creator: userTwoId,
         attributes: {
             type: 'ApexTestResult',
             url: '/someUrl/1234'
