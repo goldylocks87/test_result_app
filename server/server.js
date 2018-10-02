@@ -16,7 +16,9 @@ const port = process.env.PORT;
 
 app.use( bodyParser.json() );
 
-app.post('/testresult', (req, res) => {
+app.post('/testresult', authenticate, (req, res) => {
+
+    req.body._creator = req.user._id;
 
     var testResult = new TestResult(req.body);
 
@@ -27,21 +29,25 @@ app.post('/testresult', (req, res) => {
     }).catch(err => console.error(err));
 });
 
-app.post('/testresults', (req, res) => {
+app.post('/testresults', authenticate, (req, res) => {
 
     if ( !Array.isArray(req.body) )
         return res.status(400).send({error: 'This is not a valid array.'}); 
 
-    const testResults = req.body.map(item => new TestResult(item));
+    const testResults = req.body.map((item) => {
+        item._creator = req.user._id;
+        return new TestResult(item);
+    });
+
     TestResult.insertMany(testResults, (err) => {
         if (err) res.status(400).send(err); 
         else res.send(testResults);
     });
 });
 
-app.get('/testresults', (req, res) => {
+app.get('/testresults', authenticate, (req, res) => {
 
-    TestResult.find({})
+    TestResult.find({_creator: req.user._id})
     .then((testresults) => {
         res.send({testresults});
     },(err) => {
@@ -49,7 +55,7 @@ app.get('/testresults', (req, res) => {
     }).catch(err => console.error(err));
 });
 
-app.get('/testresults/:id', (req, res) => {
+app.get('/testresults/:id', authenticate, (req, res) => {
 
     let id = req.params.id;
 
@@ -57,7 +63,7 @@ app.get('/testresults/:id', (req, res) => {
         return res.status(404).send({error: 'Could not find that ish...'}); 
     }
 
-    TestResult.findById(id)
+    TestResult.findOne({_id: id, _creator: req.user._id})
     .then((testresults) => {
         if(!testresults) res.status(404).send({error: 'Could not find that ish...'}); 
         else res.send({testresults});
@@ -67,7 +73,7 @@ app.get('/testresults/:id', (req, res) => {
     }); 
 });
 
-app.delete('/testresults/:id', (req, res) => {
+app.delete('/testresults/:id', authenticate, (req, res) => {
 
     let id = req.params.id;
 
@@ -75,7 +81,7 @@ app.delete('/testresults/:id', (req, res) => {
         return res.status(404).send({error: 'Could not find that ish...'}); 
     }
 
-    TestResult.findByIdAndRemove(id)
+    TestResult.findOneAndRemove({_id: id, _creator: req.user._id})
     .then((testresults) => {
         if(!testresults) res.status(404).send({error: 'Could not find that ish...'}); 
         else res.send({testresults});
@@ -85,7 +91,7 @@ app.delete('/testresults/:id', (req, res) => {
     }); 
 });
 
-app.patch('/testresults/:id', (req, res) => {
+app.patch('/testresults/:id', authenticate, (req, res) => {
 
     let id = req.params.id;
 
@@ -93,7 +99,7 @@ app.patch('/testresults/:id', (req, res) => {
         return res.status(404).send({error: 'Could not find that ish...'}); 
     }
 
-    TestResult.findByIdAndUpdate(id, {$set: req.body}, {new: true})
+    TestResult.findOneAndUpdate({_id: id, _creator: req.user._id}, {$set: req.body}, {new: true})
     .then((testresults) => {
         if(!testresults) res.status(404).send({error: 'Could not find that ish...'}); 
         else res.send({testresults});
@@ -143,7 +149,7 @@ app.post('/users/login', (req, res) => {
 });
 
 app.delete('/users/me/token', authenticate, (req, res) => {
-    
+
     req.user.removeToken(req.token)
     .then(() => {
         res.status(200).send();

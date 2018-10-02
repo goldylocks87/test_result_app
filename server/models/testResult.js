@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 
 var TestResult = mongoose.model('TestResult', {
+    _creator: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true
+    },
     attributes: {
         type: {
             type: 'String',
