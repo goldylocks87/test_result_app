@@ -50,7 +50,7 @@ UserSchema.methods.generateAuthToken = function () {
             _id: user._id.toHexString(), 
             access: access 
         }, 
-        'bssecret').toString();
+        process.env.JWT_SECRET).toString();
 
     // adds the token to the tokens array on the user
     user.tokens = user.tokens.concat([{access, token}]);
@@ -82,7 +82,7 @@ UserSchema.statics.findByToken = function (token) {
     let decoded;
 
     try {
-        decoded = jwt.verify(token, 'bssecret');
+        decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (err) {
         // shorthand to return a rejected promise
         return Promise.reject(err);
